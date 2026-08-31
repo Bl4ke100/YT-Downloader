@@ -1,13 +1,17 @@
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyo
+
+# Virtual Environments
 *.env
+.env
 .venv/
 env/
 venv/
 
-# Media Downloads Cache
+# Downloaded Media (never commit user downloads)
 downloads/
 *.mp4
 *.mkv
@@ -15,12 +19,33 @@ downloads/
 *.mp3
 *.m4a
 *.wav
+*.ogg
+*.opus
+*.flac
 *.part
 *.ytdl
+
+# Cookies & Auth (sensitive!)
+cookies.txt
+*.cookies
+yt_auth_cookies.json
+
+# yt-dlp Engine Updates (stored in AppData at runtime)
+engine_updates/
+
+# Logs
+*.log
+logs/
 
 # IDE & OS
 .vscode/
 .idea/
+*.suo
+*.user
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# Dev/Test Scripts
 test_download.py
+scratch/
