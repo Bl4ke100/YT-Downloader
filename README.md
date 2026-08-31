@@ -73,17 +73,21 @@ pip install -r requirements.txt
 
 ---
 
-## 💻 Quick Start
+## 💻 Quick Start Options
 
-### Option 1: Double-Click Launcher (Windows)
-Double-click the **`start.bat`** file in the root folder.
+### Option 1: Standalone Desktop App (.exe) • Easiest for Friends
+Directly double-click the portable standalone executable:
+```text
+desktop-app/dist/Kronos4K.exe
+```
+*(No Python or FFmpeg installation required on other computers!)*
 
-### Option 2: Command Line
+### Option 2: Local Web App (FastAPI + Browser)
+Double-click **`start.bat`** or run:
 ```bash
 python run.py
 ```
-
-The server will initialize on **`http://127.0.0.1:5000`** and will automatically open your default web browser!
+This opens `http://127.0.0.1:5000` in your default browser.
 
 ---
 

@@ -1,10 +1,11 @@
 import os
 import sys
 import re
-import math
 import uuid
 import time
+import shutil
 import threading
+from pathlib import Path
 from typing import Dict, Any, Optional
 
 import engine_updater
@@ -12,28 +13,35 @@ engine_updater.ensure_engine_path()
 
 import yt_dlp
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DOWNLOADS_DIR = os.path.join(BASE_DIR, "downloads")
+def get_base_dir() -> str:
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+def get_default_downloads_dir() -> str:
+    user_downloads = str(Path.home() / "Downloads")
+    if os.path.exists(user_downloads):
+        return user_downloads
+    return os.path.join(get_base_dir(), "downloads")
 
 def get_cookies_file_path() -> str:
-    app_data = os.getenv('APPDATA') or os.path.expanduser('~')
+    # 1. Check persistent AppData directory
+    app_data = os.getenv('APPDATA') or str(Path.home())
     kronos_dir = os.path.join(app_data, 'Kronos4K')
     os.makedirs(kronos_dir, exist_ok=True)
     appdata_cookies = os.path.join(kronos_dir, "cookies.txt")
     
-    local_cookies = os.path.join(BASE_DIR, "cookies.txt")
+    # 2. Local cookies next to exe
+    local_cookies = os.path.join(get_base_dir(), "cookies.txt")
     if os.path.exists(local_cookies) and os.path.getsize(local_cookies) > 0 and not os.path.exists(appdata_cookies):
         return local_cookies
     return appdata_cookies
 
 COOKIES_FILE = get_cookies_file_path()
-os.makedirs(DOWNLOADS_DIR, exist_ok=True)
 
-# In-memory store for download task progress
-download_tasks: Dict[str, Dict[str, Any]] = {}
+active_tasks: Dict[str, Dict[str, Any]] = {}
 
 def strip_ansi(text: str) -> str:
-    """Removes ANSI color and formatting codes from strings."""
     return re.sub(r'(\x1b\[|\033\[|\[)[\d;]*[a-zA-Z]?', '', text).strip()
 
 def format_duration(seconds: Optional[int]) -> str:
@@ -47,7 +55,7 @@ def format_duration(seconds: Optional[int]) -> str:
 
 def format_size(bytes_val: Optional[float]) -> str:
     if not bytes_val or bytes_val <= 0:
-        return "Unknown size"
+        return "Calculating..."
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
         if bytes_val < 1024.0:
             return f"{bytes_val:.1f} {unit}"
@@ -77,6 +85,10 @@ def get_base_ydl_opts(browser_cookie: Optional[str] = None) -> Dict[str, Any]:
         }
     }
     
+    app_ffmpeg = os.path.join(get_base_dir(), "ffmpeg.exe")
+    if os.path.exists(app_ffmpeg):
+        opts['ffmpeg_location'] = app_ffmpeg
+        
     if os.path.exists(COOKIES_FILE) and os.path.getsize(COOKIES_FILE) > 0:
         opts['cookiefile'] = COOKIES_FILE
     elif browser_cookie and browser_cookie.lower() != 'none':
@@ -85,9 +97,6 @@ def get_base_ydl_opts(browser_cookie: Optional[str] = None) -> Dict[str, Any]:
     return opts
 
 def extract_video_info(url: str, browser_cookie: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Extracts video metadata, clean resolutions (up to 4K/8K), and audio options with safe cookie fallbacks.
-    """
     ydl_opts = get_base_ydl_opts(browser_cookie)
     ydl_opts.update({
         'skip_download': True,
@@ -104,7 +113,8 @@ def extract_video_info(url: str, browser_cookie: Optional[str] = None) -> Dict[s
         # Handle Windows browser cookie locking (e.g. Chrome is running)
         if "Could not copy" in err_str or "cookie database" in err_str:
             try:
-                fallback_opts = {'skip_download': True, 'extract_flat': False, 'quiet': True, 'no_warnings': True}
+                fallback_opts = get_base_ydl_opts('none')
+                fallback_opts.update({'skip_download': True, 'extract_flat': False})
                 with yt_dlp.YoutubeDL(fallback_opts) as fallback_ydl:
                     info = fallback_ydl.extract_info(url, download=False)
             except Exception as fallback_err:
@@ -254,9 +264,9 @@ def extract_video_info(url: str, browser_cookie: Optional[str] = None) -> Dict[s
         "audio_options": audio_options
     }
 
-def start_download_thread(task_id: str, url: str, option_id: str, option_type: str, browser_cookie: Optional[str] = None):
+def start_download_thread(task_id: str, url: str, option_id: str, option_type: str, save_dir: str, browser_cookie: Optional[str] = None):
     def hook(d):
-        task = download_tasks.get(task_id)
+        task = active_tasks.get(task_id)
         if not task:
             return
         
@@ -308,27 +318,27 @@ def start_download_thread(task_id: str, url: str, option_id: str, option_type: s
                 "total_bytes": total_bytes,
                 "downloaded_formatted": format_size(downloaded_bytes),
                 "total_formatted": format_size(total_bytes) if total_bytes else "Calculating...",
-                "step_message": f"Downloading stream: {percent}% ({speed_str})"
+                "step_message": f"Downloading: {percent}% ({speed_str})"
             })
             
         elif status == 'finished':
             task.update({
                 "status": "processing",
                 "progress": 99.0,
-                "step_message": "Merging video & audio streams with FFmpeg..."
+                "step_message": "Merging streams & applying metadata..."
             })
 
     try:
         pause_event = threading.Event()
         pause_event.set()
 
-        download_tasks[task_id] = {
+        active_tasks[task_id] = {
             "task_id": task_id,
             "status": "starting",
             "progress": 0,
             "speed": "0 KB/s",
             "eta": "--",
-            "step_message": "Initializing download streams...",
+            "step_message": "Connecting to streams...",
             "filename": None,
             "filepath": None,
             "filesize": 0,
@@ -338,7 +348,8 @@ def start_download_thread(task_id: str, url: str, option_id: str, option_type: s
             "_cancel_requested": False
         }
 
-        out_template = os.path.join(DOWNLOADS_DIR, f"{task_id}_%(title).100s.%(ext)s")
+        os.makedirs(save_dir, exist_ok=True)
+        out_template = os.path.join(save_dir, "%(title).100s.%(ext)s")
 
         ydl_opts = get_base_ydl_opts(browser_cookie)
         ydl_opts.update({
@@ -441,27 +452,27 @@ def start_download_thread(task_id: str, url: str, option_id: str, option_type: s
             found_filepath = res['requested_downloads'][0].get('filepath')
         
         if not found_filepath or not os.path.exists(found_filepath):
-            for fname in os.listdir(DOWNLOADS_DIR):
-                if fname.startswith(task_id):
-                    found_filepath = os.path.join(DOWNLOADS_DIR, fname)
+            for fname in os.listdir(save_dir):
+                fpath = os.path.join(save_dir, fname)
+                if os.path.isfile(fpath) and (time.time() - os.path.getmtime(fpath) < 60):
+                    found_filepath = fpath
                     break
-        
+            
         if found_filepath and os.path.exists(found_filepath):
             actual_filename = os.path.basename(found_filepath)
-            clean_display_name = re.sub(rf'^{task_id}_', '', actual_filename)
             filesize = os.path.getsize(found_filepath)
             
-            download_tasks[task_id].update({
+            active_tasks[task_id].update({
                 "status": "completed",
                 "progress": 100.0,
                 "filepath": found_filepath,
-                "filename": clean_display_name,
+                "filename": actual_filename,
                 "filesize": filesize,
                 "filesize_formatted": format_size(filesize),
-                "step_message": "Ready to download!"
+                "step_message": "Saved directly to folder!"
             })
         else:
-            download_tasks[task_id].update({
+            active_tasks[task_id].update({
                 "status": "error",
                 "error": "Could not locate completed output file."
             })
@@ -469,7 +480,7 @@ def start_download_thread(task_id: str, url: str, option_id: str, option_type: s
     except Exception as e:
         err_clean = strip_ansi(str(e))
         if "DOWNLOAD_STOPPED_BY_USER" in err_clean:
-            download_tasks[task_id].update({
+            active_tasks[task_id].update({
                 "status": "stopped",
                 "speed": "0 KB/s",
                 "eta": "--",
@@ -477,24 +488,24 @@ def start_download_thread(task_id: str, url: str, option_id: str, option_type: s
             })
             # Clean up partial files
             try:
-                for fname in os.listdir(DOWNLOADS_DIR):
-                    if fname.startswith(task_id):
+                for fname in os.listdir(save_dir):
+                    if fname.endswith(".part") or fname.endswith(".ytdl"):
                         try:
-                            os.remove(os.path.join(DOWNLOADS_DIR, fname))
+                            os.remove(os.path.join(save_dir, fname))
                         except Exception:
                             pass
             except Exception:
                 pass
             return
         
-        download_tasks[task_id].update({
+        active_tasks[task_id].update({
             "status": "error",
             "error": err_clean,
             "step_message": f"Error: {err_clean}"
         })
 
 def pause_download_task(task_id: str) -> bool:
-    task = download_tasks.get(task_id)
+    task = active_tasks.get(task_id)
     if not task:
         return False
     pe = task.get("_pause_event")
@@ -507,7 +518,7 @@ def pause_download_task(task_id: str) -> bool:
     return False
 
 def resume_download_task(task_id: str) -> bool:
-    task = download_tasks.get(task_id)
+    task = active_tasks.get(task_id)
     if not task:
         return False
     pe = task.get("_pause_event")
@@ -519,7 +530,7 @@ def resume_download_task(task_id: str) -> bool:
     return False
 
 def stop_download_task(task_id: str) -> bool:
-    task = download_tasks.get(task_id)
+    task = active_tasks.get(task_id)
     if not task:
         return False
     task["_cancel_requested"] = True
@@ -530,11 +541,11 @@ def stop_download_task(task_id: str) -> bool:
     task["step_message"] = "Stopping download..."
     return True
 
-def create_download_task(url: str, option_id: str, option_type: str, browser_cookie: Optional[str] = None) -> str:
+def create_download_task(url: str, option_id: str, option_type: str, save_dir: str, browser_cookie: Optional[str] = None) -> str:
     task_id = str(uuid.uuid4())[:8]
     thread = threading.Thread(
         target=start_download_thread,
-        args=(task_id, url, option_id, option_type, browser_cookie),
+        args=(task_id, url, option_id, option_type, save_dir, browser_cookie),
         daemon=True
     )
     thread.start()
@@ -602,7 +613,7 @@ def import_cookies_from_browser(browser_name: str) -> Dict[str, Any]:
         if "Could not copy" in err_msg or "cookie database" in err_msg:
             return {
                 "success": False,
-                "error": f"Could not read {browser_name.title()} cookies because {browser_name.title()} is currently open. Please close {browser_name.title()} temporarily and click Import, or upload cookies.txt."
+                "error": f"Could not read {browser_name.title()} cookies because {browser_name.title()} is currently open. Please close {browser_name.title()} temporarily and click Import, or use the 1-Click In-App Sign-In."
             }
         return {
             "success": False,

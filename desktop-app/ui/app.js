@@ -1,16 +1,23 @@
 // ==========================================================================
-// KRONOS 4K - Client Logic & Realtime Downloader
+// KRONOS 4K - Desktop Application Controller
 // ==========================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    // DOM Elements
+    // Topbar Controls
+    const folderPickerBtn = document.getElementById('folder-picker-btn');
+    const currentFolderLabel = document.getElementById('current-folder-label');
+    const statusbarDestText = document.getElementById('statusbar-dest-text');
+    const cookiesBtn = document.getElementById('cookies-btn');
+    const cookieStatusText = document.getElementById('cookie-status-text');
+
+    // Main Input Elements
     const urlInput = document.getElementById('video-url-input');
     const pasteBtn = document.getElementById('paste-btn');
     const clearBtn = document.getElementById('clear-btn');
     const fetchBtn = document.getElementById('fetch-btn');
     const errorBanner = document.getElementById('error-banner');
     const errorMessage = document.getElementById('error-message');
-    const errorCookieHintBtn = document.getElementById('error-cookie-hint-btn');
+    const errorCookieBtn = document.getElementById('error-cookie-btn');
     const skeletonLoader = document.getElementById('skeleton-loader');
     const previewSection = document.getElementById('preview-section');
 
@@ -24,11 +31,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const videoOptionsList = document.getElementById('video-options-list');
     const audioOptionsList = document.getElementById('audio-options-list');
 
-    // Tab buttons
+    // Tabs
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
 
-    // Modal Elements (Download Progress)
+    // Download Modal Elements
     const downloadModal = document.getElementById('download-modal');
     const modalCloseBtn = document.getElementById('modal-close-btn');
     const modalStatusIcon = document.getElementById('modal-status-icon');
@@ -43,10 +50,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressEta = document.getElementById('progress-eta');
     const progressStepMsg = document.getElementById('progress-step-message');
     const modalActions = document.getElementById('modal-actions');
-    const saveFileBtn = document.getElementById('save-file-btn');
-    const openFolderBtn = document.getElementById('open-folder-btn');
+    const openFileFolderBtn = document.getElementById('open-file-folder-btn');
+    const modalDoneBtn = document.getElementById('modal-done-btn');
 
-    // Download Controls Elements (Pause / Resume / Stop)
+    // Download Controls (Pause / Resume / Stop)
     const downloadControls = document.getElementById('download-controls');
     const pauseResumeBtn = document.getElementById('pause-resume-btn');
     const pauseIcon = document.getElementById('pause-icon');
@@ -54,30 +61,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const pauseResumeText = document.getElementById('pause-resume-text');
     const stopDownloadBtn = document.getElementById('stop-download-btn');
 
-    // Cookie Modal Elements
-    const cookiesModalOpenBtn = document.getElementById('cookies-modal-open-btn');
-    const cookieSettingsModal = document.getElementById('cookie-settings-modal');
-    const cookieModalCloseBtn = document.getElementById('cookie-modal-close-btn');
-    const cookieStatusLabel = document.getElementById('cookie-status-label');
-    const authSignedInCard = document.getElementById('auth-signed-in-card');
-    const authSignedOutCard = document.getElementById('auth-signed-out-card');
-    const inAppLoginBtn = document.getElementById('in-app-login-btn');
-    const reauthBtn = document.getElementById('reauth-btn');
-    const signoutBtn = document.getElementById('signout-btn');
-    const browserCookieSelect = document.getElementById('browser-cookie-select');
-    const importBrowserBtn = document.getElementById('import-browser-btn');
-    const importBtnText = document.getElementById('import-btn-text');
-    const importSpinner = document.getElementById('import-spinner');
-    const browserImportStatus = document.getElementById('browser-import-status');
-    const cookieFileInput = document.getElementById('cookie-file-input');
-    const uploadCookieFileBtn = document.getElementById('upload-cookie-file-btn');
-    const cookiesTextarea = document.getElementById('cookies-textarea');
-    const saveCookiesBtn = document.getElementById('save-cookies-btn');
-    const clearCookiesBtn = document.getElementById('clear-cookies-btn');
-
     // Engine Update Elements
     const engineUpdateBtn = document.getElementById('engine-update-btn');
     const engineVersionLabel = document.getElementById('engine-version-label');
+    const engineUpdateBadge = document.getElementById('engine-update-badge');
     const engineUpdateModal = document.getElementById('engine-update-modal');
     const engineModalCloseBtn = document.getElementById('engine-modal-close-btn');
     const engineCurrentVersion = document.getElementById('engine-current-version');
@@ -91,30 +78,62 @@ document.addEventListener('DOMContentLoaded', () => {
     // State
     let currentVideoData = null;
     let activePollInterval = null;
-    let currentTaskId = null;
+    let currentCompletedFilePath = null;
+    let currentActiveTaskId = null;
+    let isDownloadPaused = false;
+    let currentSaveDirectory = localStorage.getItem('kronos_save_dir') || null;
 
-    checkCookieStatus();
-    checkEngineStatus(true);
+    // Helper for pywebview API calls with promise wrapper
+    async function callApi(fnName, ...args) {
+        if (window.pywebview && window.pywebview.api && typeof window.pywebview.api[fnName] === 'function') {
+            return await window.pywebview.api[fnName](...args);
+        }
+        return null;
+    }
 
-    // Engine Modal Handlers
+    // Initialize Window State once pywebview is ready
+    window.addEventListener('pywebviewready', async () => {
+        if (!currentSaveDirectory) {
+            currentSaveDirectory = await callApi('get_default_downloads_dir');
+            if (currentSaveDirectory) {
+                updateFolderDisplay(currentSaveDirectory);
+            }
+        } else {
+            updateFolderDisplay(currentSaveDirectory);
+        }
+        checkCookiesStatus();
+        checkEngineStatus(true);
+    });
+
+    // Developer GitHub Link Handler
+    const devGithubLink = document.getElementById('dev-github-link');
+    if (devGithubLink) {
+        devGithubLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            callApi('open_external_url', 'https://github.com/Bl4ke100');
+        });
+    }
+
+    // Engine Update Handlers
     async function checkEngineStatus(silent = false) {
         try {
-            const res = await fetch('/api/engine/status');
-            const data = await res.json();
-            if (data.success) {
+            const data = await callApi('check_engine_update');
+            if (data && data.success) {
                 if (engineVersionLabel) {
-                    engineVersionLabel.textContent = `Engine v${data.current_version}`;
+                    engineVersionLabel.textContent = `v${data.current_version}`;
                 }
                 if (engineCurrentVersion) engineCurrentVersion.textContent = `v${data.current_version}`;
                 if (engineLatestVersion) engineLatestVersion.textContent = `v${data.latest_version}`;
 
                 if (data.update_available) {
+                    if (engineUpdateBadge) engineUpdateBadge.classList.remove('hidden');
                     if (engineStatusTag) {
                         engineStatusTag.className = 'engine-status-badge update-ready';
                         engineStatusTag.textContent = 'Update Available';
                     }
                     if (installEngineBtn) installEngineBtn.classList.remove('hidden');
                 } else {
+                    if (engineUpdateBadge) engineUpdateBadge.classList.add('hidden');
                     if (engineStatusTag) {
                         engineStatusTag.className = 'engine-status-badge up-to-date';
                         engineStatusTag.textContent = 'Up to Date';
@@ -123,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } catch (e) {
-            console.warn('Engine status check failed:', e);
+            console.warn('Engine check error:', e);
         }
     }
 
@@ -155,9 +174,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (engineUpdateMsg) engineUpdateMsg.textContent = 'Downloading and extracting latest yt-dlp release...';
 
             try {
-                const res = await fetch('/api/engine/update', { method: 'POST' });
-                const data = await res.json();
-                if (data.success) {
+                const data = await callApi('install_engine_update');
+                if (data && data.success) {
                     if (engineUpdateMsg) engineUpdateMsg.textContent = data.message || 'Engine updated successfully!';
                     await checkEngineStatus();
                     setTimeout(() => {
@@ -165,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         installEngineBtn.disabled = false;
                     }, 2000);
                 } else {
-                    if (engineUpdateMsg) engineUpdateMsg.textContent = `Update failed: ${data.detail || data.error}`;
+                    if (engineUpdateMsg) engineUpdateMsg.textContent = `Update failed: ${data?.error || 'Unknown error'}`;
                     installEngineBtn.disabled = false;
                 }
             } catch (err) {
@@ -175,19 +193,51 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Cookie Modal Handlers
-    cookiesModalOpenBtn.addEventListener('click', () => {
-        cookieSettingsModal.classList.remove('hidden');
-        checkCookieStatus();
+    function updateFolderDisplay(folderPath) {
+        if (!folderPath) return;
+        const folderName = folderPath.split(/[\\/]/).pop() || folderPath;
+        currentFolderLabel.textContent = folderName;
+        currentFolderLabel.title = folderPath;
+        statusbarDestText.textContent = `Saving to: ${folderPath}`;
+    }
+
+    // Folder Picker
+    folderPickerBtn.addEventListener('click', async () => {
+        const pickedDir = await callApi('select_download_folder');
+        if (pickedDir) {
+            currentSaveDirectory = pickedDir;
+            localStorage.setItem('kronos_save_dir', pickedDir);
+            updateFolderDisplay(pickedDir);
+        }
     });
 
-    cookieModalCloseBtn.addEventListener('click', () => {
-        cookieSettingsModal.classList.add('hidden');
-    });
+    // Cookie Modal Elements
+    const cookieSettingsModal = document.getElementById('cookie-settings-modal');
+    const cookieModalCloseBtn = document.getElementById('cookie-modal-close-btn');
+    const authSignedInCard = document.getElementById('auth-signed-in-card');
+    const authSignedOutCard = document.getElementById('auth-signed-out-card');
+    const inAppLoginBtn = document.getElementById('in-app-login-btn');
+    const reauthBtn = document.getElementById('reauth-btn');
+    const signoutBtn = document.getElementById('signout-btn');
+    const browserCookieSelect = document.getElementById('browser-cookie-select');
+    const importBrowserBtn = document.getElementById('import-browser-btn');
+    const importBtnText = document.getElementById('import-btn-text');
+    const importSpinner = document.getElementById('import-spinner');
+    const browserImportStatus = document.getElementById('browser-import-status');
+    const cookieFileInput = document.getElementById('cookie-file-input');
+    const uploadCookieFileBtn = document.getElementById('upload-cookie-file-btn');
+    const cookiesTextarea = document.getElementById('cookies-textarea');
+    const saveCookiesBtn = document.getElementById('save-cookies-btn');
+    const clearCookiesBtn = document.getElementById('clear-cookies-btn');
 
-    errorCookieHintBtn.addEventListener('click', () => {
+    cookiesBtn.addEventListener('click', () => {
         cookieSettingsModal.classList.remove('hidden');
-        checkCookieStatus();
+        checkCookiesStatus();
+    });
+    cookieModalCloseBtn.addEventListener('click', () => cookieSettingsModal.classList.add('hidden'));
+    errorCookieBtn.addEventListener('click', () => {
+        cookieSettingsModal.classList.remove('hidden');
+        checkCookiesStatus();
     });
 
     async function triggerInAppLogin(btn) {
@@ -197,38 +247,33 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="spinner" style="display: inline-block; width: 14px; height: 14px; margin-right: 6px;"></div>
             <span>Signing in... (Finish in Google window)</span>
         `;
-
-        try {
-            await fetch('/api/auth/login-window', { method: 'POST' });
-        } catch (e) {}
-
+        
+        await callApi('launch_youtube_login');
+        
         let attempts = 0;
         const checkInterval = setInterval(async () => {
             attempts++;
-            try {
-                const res = await fetch('/api/cookies/status');
-                const data = await res.json();
-                if (data && data.has_cookies) {
-                    clearInterval(checkInterval);
-                    btn.innerHTML = `<span>✓ Linked!</span>`;
-                    btn.style.background = '#10b981';
-                    btn.style.color = '#ffffff';
-
-                    await checkCookieStatus();
-
-                    setTimeout(() => {
-                        cookieSettingsModal.classList.add('hidden');
-                        btn.disabled = false;
-                        btn.style.background = '';
-                        btn.style.color = '';
-                        btn.innerHTML = originalHtml;
-                    }, 1000);
-                } else if (attempts > 90) {
-                    clearInterval(checkInterval);
+            const statusRes = await callApi('check_cookies');
+            if (statusRes && statusRes.has_cookies) {
+                clearInterval(checkInterval);
+                btn.innerHTML = `<span>✓ Linked!</span>`;
+                btn.style.background = '#10b981';
+                btn.style.color = '#ffffff';
+                
+                await checkCookiesStatus();
+                
+                setTimeout(() => {
+                    cookieSettingsModal.classList.add('hidden');
                     btn.disabled = false;
+                    btn.style.background = '';
+                    btn.style.color = '';
                     btn.innerHTML = originalHtml;
-                }
-            } catch (e) {}
+                }, 1000);
+            } else if (attempts > 90) {
+                clearInterval(checkInterval);
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
         }, 1500);
     }
 
@@ -251,25 +296,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                const res = await fetch('/api/cookies/import', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ browser_name: browserName })
-                });
-                const data = await res.json();
-                if (res.ok && data.success) {
+                const res = await callApi('import_browser_cookies', browserName);
+                if (res && res.success) {
                     if (browserImportStatus) {
-                        browserImportStatus.textContent = `✓ ${data.message || 'Cookies imported successfully!'}`;
+                        browserImportStatus.textContent = `✓ ${res.message || 'Cookies imported successfully!'}`;
                         browserImportStatus.style.color = '#10b981';
                     }
                     if (importBtnText) importBtnText.textContent = '✓ Imported!';
-                    await checkCookieStatus();
+                    await checkCookiesStatus();
                     setTimeout(() => {
                         cookieSettingsModal.classList.add('hidden');
                         if (importBtnText) importBtnText.textContent = 'Import Cookies';
                     }, 1200);
                 } else {
-                    const err = data.detail || data.error || 'Failed to import cookies.';
+                    const err = (res && res.error) || 'Failed to import cookies.';
                     if (browserImportStatus) {
                         browserImportStatus.textContent = `⚠ ${err}`;
                         browserImportStatus.style.color = '#f87171';
@@ -291,18 +331,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (signoutBtn) {
         signoutBtn.addEventListener('click', async () => {
-            try {
-                await fetch('/api/cookies/clear', { method: 'POST' });
-            } catch (e) {}
+            await callApi('clear_cookies');
             cookiesTextarea.value = '';
-            await checkCookieStatus();
+            await checkCookiesStatus();
         });
     }
 
-    uploadCookieFileBtn.addEventListener('click', () => {
-        cookieFileInput.click();
-    });
-
+    uploadCookieFileBtn.addEventListener('click', () => cookieFileInput.click());
     cookieFileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -317,57 +352,38 @@ document.addEventListener('DOMContentLoaded', () => {
     saveCookiesBtn.addEventListener('click', async () => {
         const cookieText = cookiesTextarea.value.trim();
         if (cookieText) {
-            try {
-                await fetch('/api/cookies/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: cookieText })
-                });
-            } catch (err) {
-                console.error(err);
-            }
+            await callApi('save_cookies', cookieText);
         }
 
         cookieSettingsModal.classList.add('hidden');
-        checkCookieStatus();
+        checkCookiesStatus();
     });
 
     clearCookiesBtn.addEventListener('click', async () => {
         cookiesTextarea.value = '';
-
-        try {
-            await fetch('/api/cookies/clear', { method: 'POST' });
-        } catch (err) {
-            console.error(err);
-        }
-
+        await callApi('clear_cookies');
         cookieSettingsModal.classList.add('hidden');
-        checkCookieStatus();
+        checkCookiesStatus();
     });
 
-    async function checkCookieStatus() {
-        try {
-            const res = await fetch('/api/cookies/status');
-            const data = await res.json();
-            const hasFile = data.has_cookies;
+    async function checkCookiesStatus() {
+        const res = await callApi('check_cookies');
+        const hasFile = res && res.has_cookies;
 
-            if (hasFile) {
-                cookiesModalOpenBtn.classList.add('active');
-                cookieStatusLabel.textContent = 'Auth: Signed In';
-                if (authSignedInCard) authSignedInCard.classList.remove('hidden');
-                if (authSignedOutCard) authSignedOutCard.classList.add('hidden');
-            } else {
-                cookiesModalOpenBtn.classList.remove('active');
-                cookieStatusLabel.textContent = 'Cookies';
-                if (authSignedInCard) authSignedInCard.classList.add('hidden');
-                if (authSignedOutCard) authSignedOutCard.classList.remove('hidden');
-            }
-        } catch (e) {
-            console.warn(e);
+        if (hasFile) {
+            cookiesBtn.classList.add('active');
+            cookieStatusText.textContent = 'Auth: Signed In';
+            if (authSignedInCard) authSignedInCard.classList.remove('hidden');
+            if (authSignedOutCard) authSignedOutCard.classList.add('hidden');
+        } else {
+            cookiesBtn.classList.remove('active');
+            cookieStatusText.textContent = 'Cookies';
+            if (authSignedInCard) authSignedInCard.classList.add('hidden');
+            if (authSignedOutCard) authSignedOutCard.classList.remove('hidden');
         }
     }
 
-    // Clipboard Paste Handler
+    // Input handlers
     pasteBtn.addEventListener('click', async () => {
         try {
             const text = await navigator.clipboard.readText();
@@ -376,12 +392,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 urlInput.dispatchEvent(new Event('input'));
                 fetchVideoDetails();
             }
-        } catch (err) {
+        } catch (e) {
             urlInput.focus();
         }
     });
 
-    // Clear Input Handler
     clearBtn.addEventListener('click', () => {
         urlInput.value = '';
         clearBtn.classList.add('hidden');
@@ -396,7 +411,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Enter Key Trigger
     urlInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             fetchVideoDetails();
@@ -426,22 +440,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Reveal in Folder
-    openFolderBtn.addEventListener('click', async () => {
-        if (!currentTaskId) return;
-        try {
-            const res = await fetch(`/api/open-folder/${currentTaskId}`, { method: 'POST' });
-            const data = await res.json();
-            if (data.success) {
-                openFolderBtn.innerHTML = `
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                    <span>Folder Opened</span>
-                `;
-            }
-        } catch (e) {
-            console.error(e);
+    modalDoneBtn.addEventListener('click', () => {
+        downloadModal.classList.add('hidden');
+    });
+
+    // Reveal in File Explorer
+    openFileFolderBtn.addEventListener('click', () => {
+        if (currentCompletedFilePath) {
+            callApi('reveal_in_explorer', currentCompletedFilePath);
+        } else if (currentSaveDirectory) {
+            callApi('reveal_in_explorer', currentSaveDirectory);
         }
     });
 
@@ -460,22 +468,16 @@ document.addEventListener('DOMContentLoaded', () => {
         setLoading(true);
 
         try {
-            const res = await fetch('/api/info', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url })
-            });
+            const res = await callApi('fetch_video_info', url);
 
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.detail || 'Failed to extract video details.');
+            if (!res || !res.success) {
+                throw new Error(res?.error || 'Failed to extract video details.');
             }
 
-            currentVideoData = data;
-            renderVideoPreview(data);
+            currentVideoData = res.data;
+            renderVideoPreview(res.data);
         } catch (err) {
-            const msg = err.message || 'Unable to load video. Please check your internet or URL.';
+            const msg = err.message || 'Unable to load video.';
             const isAgeOrCookie = msg.toLowerCase().includes('age') || msg.toLowerCase().includes('sign in') || msg.toLowerCase().includes('cookie');
             showError(msg, isAgeOrCookie);
         } finally {
@@ -484,7 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Render Preview and Quality Options
+    // Render Preview
     function renderVideoPreview(data) {
         videoThumbnail.src = data.thumbnail || '';
         videoDuration.textContent = data.duration_formatted || '0:00';
@@ -518,7 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </div>
                     <div class="option-download-btn" title="Download ${opt.label}">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                             <polyline points="7 10 12 15 17 10"></polyline>
                             <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -529,8 +531,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.addEventListener('click', () => initiateDownload(opt, 'video'));
                 videoOptionsList.appendChild(card);
             });
-        } else {
-            videoOptionsList.innerHTML = '<p style="color: var(--text-muted); padding: 10px;">No specific video streams detected.</p>';
         }
 
         // Render Audio Formats
@@ -552,7 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </div>
                     <div class="option-download-btn" title="Download ${opt.label}">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                             <polyline points="7 10 12 15 17 10"></polyline>
                             <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -570,8 +570,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Download Controls Click Handlers
-    let isDownloadPaused = false;
-
     function setPauseState(paused) {
         isDownloadPaused = paused;
         if (!pauseResumeBtn) return;
@@ -592,39 +590,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (pauseResumeBtn) {
         pauseResumeBtn.addEventListener('click', async () => {
-            if (!currentTaskId) return;
+            if (!currentActiveTaskId) return;
             if (!isDownloadPaused) {
-                // Pause download
-                try {
-                    await fetch(`/api/download/pause/${currentTaskId}`, { method: 'POST' });
-                    setPauseState(true);
-                    progressSpeed.textContent = '0 KB/s (Paused)';
-                    progressStepMsg.textContent = 'Download paused by user';
-                } catch (e) {
-                    console.error('Pause failed:', e);
-                }
+                await callApi('pause_download', currentActiveTaskId);
+                setPauseState(true);
+                progressSpeed.textContent = '0 KB/s (Paused)';
+                progressStepMsg.textContent = 'Download paused by user';
             } else {
-                // Resume download
-                try {
-                    await fetch(`/api/download/resume/${currentTaskId}`, { method: 'POST' });
-                    setPauseState(false);
-                    progressStepMsg.textContent = 'Resuming download...';
-                } catch (e) {
-                    console.error('Resume failed:', e);
-                }
+                await callApi('resume_download', currentActiveTaskId);
+                setPauseState(false);
+                progressStepMsg.textContent = 'Resuming download...';
             }
         });
     }
 
     if (stopDownloadBtn) {
         stopDownloadBtn.addEventListener('click', async () => {
-            if (!currentTaskId) return;
-            try {
-                await fetch(`/api/download/stop/${currentTaskId}`, { method: 'POST' });
-                handleDownloadStopped();
-            } catch (e) {
-                console.error('Stop failed:', e);
-            }
+            if (!currentActiveTaskId) return;
+            await callApi('stop_download', currentActiveTaskId);
+            handleDownloadStopped();
         });
     }
 
@@ -643,7 +627,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         modalStatusIcon.className = 'modal-icon-badge error';
         modalStatusIcon.innerHTML = `
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="15" y1="9" x2="9" y2="15"></line>
                 <line x1="9" y1="9" x2="15" y2="15"></line>
@@ -668,7 +652,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
             </svg>
         `;
-        modalHeading.textContent = 'Processing Download...';
+        modalHeading.textContent = 'Downloading Media...';
         modalSubtext.textContent = 'Fetching high-speed streams from YouTube';
         modalTargetBadge.textContent = option.badge || (type === 'video' ? 'Video' : 'Audio');
         modalTargetTitle.textContent = currentVideoData.title || '';
@@ -678,47 +662,36 @@ document.addEventListener('DOMContentLoaded', () => {
         progressSize.textContent = '-- / --';
         progressEta.textContent = 'ETA: --';
         progressStepMsg.textContent = 'Initializing background worker...';
-
-        openFolderBtn.innerHTML = `
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-            </svg>
-            <span>Open Folder</span>
-        `;
+        currentCompletedFilePath = null;
 
         try {
-            const res = await fetch('/api/download', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    url: currentVideoData.url,
-                    option_id: option.id,
-                    option_type: type
-                })
-            });
+            const res = await callApi(
+                'start_download_task',
+                currentVideoData.url,
+                option.id,
+                type,
+                currentSaveDirectory
+            );
 
-            const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data.detail || 'Could not start download task.');
+            if (!res || !res.success) {
+                throw new Error(res?.error || 'Could not start download.');
             }
 
-            currentTaskId = data.task_id;
-            startPollingProgress(data.task_id);
+            currentActiveTaskId = res.task_id;
+            startPollingProgress(res.task_id);
         } catch (err) {
             handleDownloadError(err.message || 'Failed to start download');
         }
     }
 
-    // Poll Progress Endpoint
+    // Polling Loop
     function startPollingProgress(taskId) {
         if (activePollInterval) clearInterval(activePollInterval);
 
         activePollInterval = setInterval(async () => {
             try {
-                const res = await fetch(`/api/progress/${taskId}`);
-                if (!res.ok) return;
-
-                const task = await res.json();
+                const task = await callApi('get_download_progress', taskId);
+                if (!task) return;
 
                 if (task.status === 'paused') {
                     setPauseState(true);
@@ -739,9 +712,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     progressPercent.textContent = '99%';
                     progressSpeed.textContent = 'Processing';
                     progressEta.textContent = 'Merging';
-                    progressStepMsg.textContent = 'Merging video & audio with FFmpeg 8.1...';
+                    progressStepMsg.textContent = 'Merging video & audio streams with FFmpeg...';
                     modalHeading.textContent = 'Finalizing Media...';
-                    modalSubtext.textContent = 'Encoding & adding ID3 metadata tags';
+                    modalSubtext.textContent = 'Encoding & saving directly to folder';
                 } else if (task.status === 'stopped') {
                     clearInterval(activePollInterval);
                     activePollInterval = null;
@@ -750,7 +723,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     clearInterval(activePollInterval);
                     activePollInterval = null;
                     if (downloadControls) downloadControls.classList.add('hidden');
-                    handleDownloadCompleted(task, taskId);
+                    handleDownloadCompleted(task);
                 } else if (task.status === 'error') {
                     clearInterval(activePollInterval);
                     activePollInterval = null;
@@ -760,51 +733,34 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) {
                 console.warn('Poll error:', e);
             }
-        }, 500);
+        }, 400);
     }
 
-    // Download Finished Handler
-    function handleDownloadCompleted(task, taskId) {
+    function handleDownloadCompleted(task) {
         progressBarFill.style.width = '100%';
         progressPercent.textContent = '100%';
         progressSpeed.textContent = 'Done';
         progressSize.textContent = task.filesize_formatted || '';
-        progressEta.textContent = 'Complete';
-        progressStepMsg.textContent = task.step_message || 'Download ready!';
+        progressEta.textContent = 'Saved';
+        progressStepMsg.textContent = 'File successfully saved to your downloads folder!';
 
         modalStatusIcon.className = 'modal-icon-badge success';
         modalStatusIcon.innerHTML = `
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <polyline points="20 6 9 17 4 12"></polyline>
             </svg>
         `;
         modalHeading.textContent = 'Download Complete!';
-        modalSubtext.textContent = `Ready: ${task.filename || 'media file'}`;
+        modalSubtext.textContent = `Saved: ${task.filename || 'media file'}`;
 
-        const fileDownloadUrl = `/api/file/${taskId}`;
-        saveFileBtn.href = fileDownloadUrl;
-        saveFileBtn.setAttribute('download', task.filename || 'video.mp4');
-
+        currentCompletedFilePath = task.filepath;
         modalActions.classList.remove('hidden');
-
-        // Trigger browser download popup
-        triggerBrowserDownload(fileDownloadUrl, task.filename);
     }
 
-    function triggerBrowserDownload(url, filename) {
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename || 'download';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-
-    // Download Error Handler
     function handleDownloadError(msg) {
         modalStatusIcon.className = 'modal-icon-badge error';
         modalStatusIcon.innerHTML = `
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="15" y1="9" x2="9" y2="15"></line>
                 <line x1="9" y1="9" x2="15" y2="15"></line>
@@ -837,9 +793,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function showError(msg, showCookieHint = false) {
         errorMessage.textContent = msg;
         if (showCookieHint) {
-            errorCookieHintBtn.classList.remove('hidden');
+            errorCookieBtn.classList.remove('hidden');
         } else {
-            errorCookieHintBtn.classList.add('hidden');
+            errorCookieBtn.classList.add('hidden');
         }
         errorBanner.classList.remove('hidden');
     }
