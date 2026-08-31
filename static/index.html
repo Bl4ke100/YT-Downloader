@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KRONOS 4K • YouTube Downloader</title>
+    <meta name="description" content="Ultra-fast, high-definition YouTube video and audio downloader supporting up to 4K UHD 60fps and 320kbps MP3 audio.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-background">
+        <div class="glow-orb glow-top"></div>
+        <div class="glow-orb glow-bottom"></div>
+        <div class="grid-overlay"></div>
+    </div>
+
+    <main class="main-container">
+        <!-- Header / Branding -->
+        <header class="header">
+            <div class="badge-pill">
+                <span class="pulse-dot"></span>
+                <span class="badge-text">Up to 4K UHD • 60 FPS • Lossless Audio</span>
+            </div>
+            <h1 class="logo-title">
+                <span class="text-white">KRONOS</span>
+                <span class="text-gradient">4K</span>
+            </h1>
+            <p class="subtitle">Download YouTube videos in maximum crystal clarity or studio-grade audio.</p>
+        </header>
+
+        <!-- Search & URL Input Section -->
+        <section class="input-section">
+            <div class="input-card">
+                <div class="input-wrapper">
+                    <div class="input-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                    </div>
+                    <input 
+                        type="url" 
+                        id="video-url-input" 
+                        placeholder="Paste YouTube video link here... (e.g. https://youtu.be/...)" 
+                        autocomplete="off"
+                        spellcheck="false"
+                    />
+                    <button id="paste-btn" class="btn-icon" title="Paste from clipboard" aria-label="Paste link">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                        </svg>
+                        <span>Paste</span>
+                    </button>
+                    <button id="clear-btn" class="btn-icon hidden" title="Clear input" aria-label="Clear input">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                    <button id="fetch-btn" class="btn-primary" aria-label="Fetch video details">
+                        <span class="btn-text">Fetch Video</span>
+                        <svg class="btn-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
+                        </svg>
+                        <div class="spinner hidden"></div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Error Banner -->
+            <div id="error-banner" class="error-banner hidden" role="alert">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span id="error-message">Something went wrong.</span>
+            </div>
+        </section>
+
+        <!-- Skeleton Loader -->
+        <section id="skeleton-loader" class="preview-section hidden">
+            <div class="preview-card skeleton-card">
+                <div class="skeleton-media"></div>
+                <div class="skeleton-content">
+                    <div class="skeleton-line skeleton-title"></div>
+                    <div class="skeleton-line skeleton-sub"></div>
+                    <div class="skeleton-grid">
+                        <div class="skeleton-box"></div>
+                        <div class="skeleton-box"></div>
+                        <div class="skeleton-box"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Video Details & Options Section -->
+        <section id="preview-section" class="preview-section hidden">
+            <div class="preview-card">
+                <!-- Video Media & Info Header -->
+                <div class="media-container">
+                    <div class="thumbnail-wrapper">
+                        <img id="video-thumbnail" src="" alt="Video Thumbnail" loading="lazy" />
+                        <span id="video-duration" class="duration-badge">0:00</span>
+                        <div class="thumb-overlay">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="meta-info">
+                        <div class="meta-tags">
+                            <span class="tag-badge" id="meta-resolution-tag">4K UHD</span>
+                            <span class="tag-views" id="video-views">0 views</span>
+                        </div>
+                        <h2 id="video-title" class="video-title">Video Title</h2>
+                        <div class="channel-row">
+                            <div class="channel-avatar-stub">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                </svg>
+                            </div>
+                            <span id="video-channel" class="channel-name">Channel Name</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs for Video / Audio -->
+                <div class="format-tabs">
+                    <button class="tab-btn active" data-tab="video-tab">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                            <line x1="7" y1="2" x2="7" y2="22"></line>
+                            <line x1="17" y1="2" x2="17" y2="22"></line>
+                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                            <line x1="2" y1="7" x2="7" y2="7"></line>
+                            <line x1="2" y1="17" x2="7" y2="17"></line>
+                            <line x1="17" y1="17" x2="22" y2="17"></line>
+                            <line x1="17" y1="7" x2="22" y2="7"></line>
+                        </svg>
+                        <span>Video Formats (Up to 4K)</span>
+                    </button>
+                    <button class="tab-btn" data-tab="audio-tab">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 18V5l12-2v13"></path>
+                            <circle cx="6" cy="18" r="3"></circle>
+                            <circle cx="18" cy="16" r="3"></circle>
+                        </svg>
+                        <span>Audio Extraction (MP3 / Lossless)</span>
+                    </button>
+                </div>
+
+                <!-- Video Options Grid -->
+                <div id="video-tab" class="tab-content active">
+                    <div class="options-grid" id="video-options-list">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Audio Options Grid -->
+                <div id="audio-tab" class="tab-content">
+                    <div class="options-grid" id="audio-options-list">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Download Modal / Active Task Overlay -->
+        <div id="download-modal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <div class="modal-title-wrapper">
+                        <div class="modal-icon-badge" id="modal-status-icon">
+                            <svg class="spin-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 id="modal-heading" class="modal-title">Preparing Download...</h3>
+                            <p id="modal-subtext" class="modal-subtitle">Processing video and audio streams</p>
+                        </div>
+                    </div>
+                    <button id="modal-close-btn" class="modal-close" aria-label="Close modal">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <!-- Target Format Details -->
+                    <div class="download-target-info">
+                        <span id="modal-target-badge" class="target-badge">4K 2160p</span>
+                        <span id="modal-target-title" class="target-title">Video title placeholder</span>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="progress-track">
+                        <div id="progress-bar-fill" class="progress-fill" style="width: 0%;"></div>
+                    </div>
+
+                    <!-- Progress Metrics -->
+                    <div class="progress-stats">
+                        <span id="progress-percent" class="stat-percent">0%</span>
+                        <div class="stat-details">
+                            <span id="progress-speed" class="stat-item">-- MB/s</span>
+                            <span class="stat-divider">•</span>
+                            <span id="progress-size" class="stat-item">-- / --</span>
+                            <span class="stat-divider">•</span>
+                            <span id="progress-eta" class="stat-item">ETA: --</span>
+                        </div>
+                    </div>
+
+                    <div id="progress-step-message" class="step-message">Initializing download task...</div>
+
+                    <!-- Action Buttons (shown on complete or error) -->
+                    <div id="modal-actions" class="modal-actions hidden">
+                        <a id="save-file-btn" class="btn-primary flex-1" href="#" download>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            <span>Save to Browser</span>
+                        </a>
+                        <button id="open-folder-btn" class="btn-secondary" title="Reveal in File Explorer">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            <span>Open Folder</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Showcase / Footer -->
+        <footer class="footer-features">
+            <div class="feature-item">
+                <div class="feature-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                </div>
+                <div>
+                    <h4 class="feature-title">Ultra HD 4K Support</h4>
+                    <p class="feature-desc">Muxes pristine 2160p/1440p/1080p video with best stereo audio track.</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18V5l12-2v13"></path>
+                        <circle cx="6" cy="18" r="3"></circle>
+                        <circle cx="18" cy="16" r="3"></circle>
+                    </svg>
+                </div>
+                <div>
+                    <h4 class="feature-title">Studio Audio 320kbps</h4>
+                    <p class="feature-desc">Extract pure MP3, M4A AAC, and uncompressed WAV with ID3 metadata.</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h4 class="feature-title">Zero Adware & Privacy</h4>
+                    <p class="feature-desc">No tracking, no external shady servers. Runs locally with native FFmpeg 8.1.</p>
+                </div>
+            </div>
+        </footer>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
