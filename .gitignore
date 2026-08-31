@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+.venv/
+env/
+venv/
+
+# Media Downloads Cache
+downloads/
+*.mp4
+*.mkv
+*.webm
+*.mp3
+*.m4a
+*.wav
+*.part
+*.ytdl
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+test_download.py
