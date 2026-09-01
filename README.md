@@ -1,153 +1,178 @@
-<div align="center">
+﻿<div align="center">
 
-# ⚡ KRONOS 4K • YouTube Downloader
+<img src="static/logo.png" alt="KRONOS 4K" width="90" />
 
-**A sleek, ultra-fast, modern YouTube video & audio downloader supporting up to 4K UHD 60FPS and 320kbps studio-grade audio extraction.**
+# KRONOS 4K — YouTube Downloader
+
+**A sleek, ultra-fast, privacy-first YouTube video & audio downloader.**
+**Supports up to 4K UHD 60FPS, studio-grade 320kbps audio, and comes as a standalone desktop app — no installation required.**
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Latest-009688.svg?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![yt-dlp](https://img.shields.io/badge/yt--dlp-Latest-red.svg?style=for-the-badge&logo=youtube&logoColor=white)](https://github.com/yt-dlp/yt-dlp)
-[![FFmpeg](https://img.shields.io/badge/FFmpeg-8.x%20%2F%207.x-green.svg?style=for-the-badge&logo=ffmpeg&logoColor=white)](https://ffmpeg.org)
+[![FFmpeg](https://img.shields.io/badge/FFmpeg-8.x-green.svg?style=for-the-badge&logo=ffmpeg&logoColor=white)](https://ffmpeg.org)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg?style=for-the-badge)](LICENSE)
 
-[Features](#-key-features) • [Prerequisites](#-prerequisites) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Architecture](#-architecture) • [API Docs](#-api-endpoints)
+[Features](#-features) • [Quick Start](#-quick-start) • [Desktop App](#-standalone-desktop-app) • [Web App](#-web-app) • [API](#-api-reference) • [Author](#-author)
 
 </div>
 
 ---
 
-## ✨ Key Features
+## ✨ Features
 
-- 🎬 **Ultra HD Video Support**: Download videos up to **4K UHD (2160p @ 60fps)**, **2K QHD (1440p)**, **1080p FHD**, **720p HD**, **480p**, and **360p**.
-- 🎵 **Studio Audio Extraction**: Convert and export audio to **MP3 (Ultra HQ 320kbps & 192kbps)**, **Original M4A / AAC**, and **Lossless WAV** with embedded ID3 metadata tags.
-- 🖤 **Luxury Monochrome UI**: Built with pure shades of black, obsidian glassmorphism, subtle glowing borders, and high-contrast typography.
-- ⚡ **Instant Link Parsing**: Paste any YouTube link (or click *Paste from Clipboard*) to instantly fetch video metadata, thumbnails, duration, view counts, and stream sizes.
-- 📊 **Real-Time Download Tracking**: Live progress bar showing download speed (MB/s), downloaded / total file size, estimated time remaining (ETA), and FFmpeg stream multiplexing status.
-- 💾 **Direct Browser Downloads**: Triggers automatic browser file save once processing completes, with a one-click *"Reveal in File Explorer"* button.
-- 🔒 **100% Private & Ad-Free**: Runs entirely on your local machine. No tracking, no third-party spam servers, no ads.
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-| :--- | :--- |
-| **Backend** | [FastAPI](https://fastapi.tiangolo.com), [Uvicorn](https://www.uvicorn.org), [yt-dlp](https://github.com/yt-dlp/yt-dlp) |
-| **Media Processing** | [FFmpeg](https://ffmpeg.org) (Stream merging, audio transcoding, ID3 tagger) |
-| **Frontend** | Semantic HTML5, Vanilla CSS3 (Custom Design System, Glassmorphism, Micro-animations) |
-| **Client Script** | Vanilla JavaScript (ES6+, Async Fetch, Live Polling, Clipboard API) |
-| **Fonts** | Plus Jakarta Sans & JetBrains Mono |
+| Feature | Details |
+|---|---|
+| 🎬 **4K UHD Video** | Download up to 2160p @ 60FPS with FFmpeg stream muxing |
+| 🎵 **Studio Audio** | MP3 320kbps / 192kbps, M4A AAC, Lossless WAV with ID3 tags |
+| ⏸️ **Download Controls** | Pause, Resume & Stop downloads mid-flight |
+| ⚡ **1-Click Engine Updates** | Update yt-dlp without reinstalling the app |
+| 🔑 **YouTube Authentication** | In-app YouTube login for age-restricted / private content |
+| 🍪 **Cookie Import** | Import cookies from Chrome, Firefox, Edge, Brave, or upload a file |
+| 🚀 **Standalone EXE** | Zero-dependency desktop app — share a single `.exe` with anyone |
+| 🖥️ **Dual Mode** | Runs as a native desktop app (pywebview) OR a local web app |
+| 🌐 **Real-Time Progress** | Live progress bar with speed, ETA, and file size |
+| 🔒 **100% Private** | Everything runs locally — no tracking, no ads, no cloud |
 
 ---
 
-## 📋 Prerequisites
+## 🚀 Quick Start
 
-Before running the application, ensure you have the following installed:
+### Option A — Standalone Desktop App (Recommended)
 
-1. **Python 3.10+** (tested on Python 3.11 & 3.12)
-   - Download from [python.org](https://www.python.org/downloads/)
-2. **FFmpeg** (required for 4K video + audio merging and MP3 conversion)
-   - **Windows**: Install via `winget install Gyan.FFmpeg` or `choco install ffmpeg`, or download from [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) and add the `bin` folder to your System `PATH`.
-   - **macOS**: `brew install ffmpeg`
-   - **Linux (Ubuntu/Debian)**: `sudo apt update && sudo apt install ffmpeg`
+> No Python or FFmpeg installation needed. Just download and run.
 
-Verify FFmpeg installation:
-```bash
-ffmpeg -version
-```
+1. Download **`Kronos4K.exe`** from [Releases](https://github.com/Bl4ke100/YT-Downloader/releases)
+2. Double-click it — that's it!
 
 ---
 
-## 🚀 Installation & Setup
+### Option B — Web App (Python required)
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/your-username/yt-downloader.git
-cd yt-downloader
-```
+#### 1. Prerequisites
 
-### 2. Install Python Dependencies
+- **Python 3.10+** — [python.org](https://www.python.org/downloads/)
+- **FFmpeg** — required for 4K muxing and audio conversion
+  - **Windows**: `winget install Gyan.FFmpeg`
+  - **macOS**: `brew install ffmpeg`
+  - **Linux**: `sudo apt install ffmpeg`
+
+#### 2. Clone & Install
+
 ```bash
+git clone https://github.com/Bl4ke100/YT-Downloader.git
+cd YT-Downloader
 pip install -r requirements.txt
 ```
 
----
+#### 3. Run
 
-## 💻 Quick Start Options
-
-### Option 1: Standalone Desktop App (.exe) • Easiest for Friends
-Directly double-click the portable standalone executable:
-```text
-desktop-app/dist/Kronos4K.exe
-```
-*(No Python or FFmpeg installation required on other computers!)*
-
-### Option 2: Local Web App (FastAPI + Browser)
-Double-click **`start.bat`** or run:
 ```bash
 python run.py
 ```
-This opens `http://127.0.0.1:5000` in your default browser.
+
+Opens at **`http://127.0.0.1:5000`** automatically.
+
+Or on Windows, just double-click **`start.bat`**.
 
 ---
 
-## 🎯 How to Use
+## 🖥️ Standalone Desktop App
 
-1. **Copy a YouTube URL** from your browser or mobile app.
-2. Click the **"Paste"** button or press <kbd>Ctrl</kbd> + <kbd>V</kbd> into the search input.
-3. Click **"Fetch Video"** or press <kbd>Enter</kbd>.
-4. Review the video preview card (Thumbnail, Title, Duration, Views, Channel).
-5. Choose your desired format:
-   - **Video Formats Tab**: Select **4K (2160p)**, 1440p, 1080p 60fps, 720p, etc.
-   - **Audio Extraction Tab**: Select **MP3 320kbps**, 192kbps, M4A AAC, or WAV.
-6. The live progress modal will track the download and FFmpeg stream multiplexing in real time.
-7. Once finished, your browser will immediately download the file!
+The desktop app is built with [pywebview](https://pywebview.app/) and bundles Python, FFmpeg, and all dependencies into a single `.exe`.
+
+### Build from Source
+
+```bash
+cd desktop-app
+python build_exe.py
+# Output: desktop-app/dist/Kronos4K.exe
+```
+
+> **Requirements to build**: Python 3.11, PyInstaller, pywebview, FFmpeg binary in `desktop-app/`
+
+---
+
+## 📖 How to Use
+
+1. **Paste** a YouTube URL into the input field (or click the Paste button)
+2. Click **Fetch Video** — metadata, thumbnail, and all available formats load instantly
+3. Switch between the **Video** and **Audio** tabs to pick your format:
+   - Video: 4K (2160p), 1440p, 1080p 60FPS, 720p, 480p, 360p
+   - Audio: MP3 320kbps, MP3 192kbps, M4A AAC, WAV Lossless
+4. Click **Download** — a live modal shows real-time progress
+5. Use **Pause / Resume / Stop** controls at any time during the download
+6. Once complete, save to browser or reveal the file in Explorer
+
+### Authentication (Age-Restricted Videos)
+
+- **Sign in to YouTube**: Click the `Auth` button → log in inside the pop-up window
+- **Import browser cookies**: Click `Cookies` → select your browser or upload a `cookies.txt`
+
+### Engine Updates
+
+Click the **`⚡ Engine`** button to check for and install the latest `yt-dlp` release without restarting or reinstalling the app.
 
 ---
 
 ## 📁 Project Structure
 
-```text
+```
 YT-Downloader/
-├── static/
-│   ├── index.html        # Clean, accessible UI layout
-│   ├── style.css         # Modern monochrome design system & glassmorphism
-│   └── app.js            # Video fetcher, live polling & download triggers
-├── downloads/            # Local temporary cache for processed media files
-├── downloader.py         # yt-dlp core wrapper, format parser & background workers
-├── server.py             # FastAPI REST endpoints & static file serving
-├── run.py                # Server launcher with auto-browser launcher
-├── start.bat             # 1-click Windows batch runner
-├── requirements.txt      # Python dependencies
-└── README.md             # Documentation
+├── static/              # Web app frontend (HTML, CSS, JS, logo)
+├── desktop-app/         # Desktop app source
+│   ├── ui/              # Desktop UI (HTML, CSS, JS)
+│   ├── main.py          # pywebview entry point & desktop API
+│   ├── downloader_core.py
+│   ├── engine_updater.py
+│   └── build_exe.py     # PyInstaller build script
+├── downloader.py        # yt-dlp core wrapper & background workers
+├── server.py            # FastAPI REST API
+├── engine_updater.py    # In-app yt-dlp update system
+├── run.py               # Web server launcher
+├── start.bat            # 1-click Windows launcher
+└── requirements.txt
 ```
 
 ---
 
-## 🔌 API Endpoints
+## 🌐 API Reference
 
-The backend provides a clean RESTful API:
-
-| Method | Endpoint | Description | Payload / Parameters |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/info` | Extracts video metadata, available resolutions, and audio options | `{ "url": "https://youtu.be/..." }` |
-| `POST` | `/api/download` | Initiates an asynchronous background download task | `{ "url": "...", "option_id": "video_2160", "option_type": "video" }` |
-| `GET` | `/api/progress/{task_id}` | Returns real-time download status, %, speed, and ETA | Path parameter: `task_id` |
-| `GET` | `/api/file/{task_id}` | Streams the completed file directly to the browser | Path parameter: `task_id` |
-| `POST` | `/api/open-folder/{task_id}` | Highlights the downloaded file in Windows File Explorer | Path parameter: `task_id` |
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/info` | Fetch video metadata & available formats |
+| `POST` | `/api/download` | Start a background download task |
+| `GET` | `/api/progress/{task_id}` | Poll download progress (%, speed, ETA) |
+| `POST` | `/api/download/pause/{task_id}` | Pause an active download |
+| `POST` | `/api/download/resume/{task_id}` | Resume a paused download |
+| `POST` | `/api/download/stop/{task_id}` | Stop and clean up a download |
+| `GET` | `/api/file/{task_id}` | Stream the completed file to browser |
+| `GET` | `/api/engine/status` | Check current vs latest yt-dlp version |
+| `POST` | `/api/engine/update` | Install the latest yt-dlp engine |
+| `POST` | `/api/cookies/import-browser` | Import cookies from an installed browser |
 
 ---
 
-## 🛡️ Disclaimer
+## ⚠️ Disclaimer
 
-This software is intended for personal and educational use only. Please respect the copyright and terms of service of content owners. The authors are not responsible for any misuse of this tool.
+This tool is intended for **personal and educational use only**.
+Please respect copyright laws and the Terms of Service of content platforms.
+The author is not responsible for any misuse of this software.
+
+---
+
+## 👤 Author
+
+**Bl4ke100**
+
+- GitHub: [@Bl4ke100](https://github.com/Bl4ke100)
 
 ---
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE) - feel free to use, modify, and distribute it.
+This project is licensed under the [MIT License](LICENSE).
 
 <div align="center">
-  <sub>Built with ❤️ using FastAPI, yt-dlp, and FFmpeg.</sub>
+  <sub>Built with ❤️ using FastAPI, yt-dlp, pywebview, and FFmpeg.</sub>
 </div>
