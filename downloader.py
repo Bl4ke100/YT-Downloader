@@ -162,9 +162,11 @@ def ensure_nle_compatible(filepath: str, task_id: Optional[str] = None) -> str:
                 
     return filepath
 
-def strip_ansi(text: str) -> str:
-    """Removes ANSI color and formatting codes from strings."""
-    return re.sub(r'(\x1b\[|\033\[|\[)[\d;]*[a-zA-Z]?', '', text).strip()
+def strip_ansi(text: Any) -> str:
+    """Removes ANSI color and formatting codes from strings safely."""
+    if text is None:
+        return ""
+    return re.sub(r'(\x1b\[|\033\[|\[)[\d;]*[a-zA-Z]?', '', str(text)).strip()
 
 def format_duration(seconds: Optional[int]) -> str:
     if not seconds:
@@ -434,16 +436,16 @@ def start_download_thread(task_id: str, url: str, option_id: str, option_type: s
             if total_bytes > 0:
                 percent = round((downloaded_bytes / total_bytes) * 100.0, 1)
             else:
-                p_str = strip_ansi(d.get('_percent_str', '0%')).replace('%', '')
+                p_str = strip_ansi(d.get('_percent_str') or '0%').replace('%', '')
                 try:
                     percent = float(p_str)
                 except ValueError:
                     pass
             
             speed = d.get('speed')
-            speed_str = f"{format_size(speed)}/s" if speed else d.get('_speed_str', '')
+            speed_str = f"{format_size(speed)}/s" if speed else d.get('_speed_str') or ''
             eta = d.get('eta')
-            eta_str = f"{eta}s" if eta else d.get('_eta_str', '')
+            eta_str = f"{eta}s" if eta else d.get('_eta_str') or ''
             
             download_tasks[task_id].update({
                 "status": "downloading",
@@ -523,7 +525,7 @@ def start_download_thread(task_id: str, url: str, option_id: str, option_type: s
                     }],
                 })
         else:
-            m = re.search(r'video_(\d+)', option_id)
+            m = re.search(r'video_(\d+)', str(option_id or ''))
             target_height = int(m.group(1)) if m else None
             
             if target_height:
