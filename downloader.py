@@ -530,13 +530,11 @@ def start_download_thread(task_id: str, url: str, option_id: str, option_type: s
             
             if target_height:
                 format_spec = (
-                    f"bestvideo[height<={target_height}][vcodec^=avc]+bestaudio[ext=m4a]/"
-                    f"bestvideo[height<={target_height}][ext=mp4]+bestaudio[ext=m4a]/"
                     f"bestvideo[height<={target_height}]+bestaudio/"
                     f"best[height<={target_height}]/best"
                 )
             else:
-                format_spec = "bestvideo[vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best"
+                format_spec = "bestvideo+bestaudio/best"
 
             ydl_opts.update({
                 'format': format_spec,
