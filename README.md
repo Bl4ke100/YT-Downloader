@@ -7,11 +7,19 @@
 **A sleek, ultra-fast, privacy-first YouTube video & audio downloader.**
 **Supports up to 4K UHD 60FPS, studio-grade 320kbps audio, and comes as a standalone desktop app — no installation required.**
 
+[![Latest Release](https://img.shields.io/github/v/release/Bl4ke100/Kronos4k-Desktop--YT-Downloader?style=for-the-badge&logo=github&color=orange)](https://github.com/Bl4ke100/Kronos4k-Desktop--YT-Downloader/releases/latest)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Latest-009688.svg?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![yt-dlp](https://img.shields.io/badge/yt--dlp-Latest-red.svg?style=for-the-badge&logo=youtube&logoColor=white)](https://github.com/yt-dlp/yt-dlp)
 [![FFmpeg](https://img.shields.io/badge/FFmpeg-8.x-green.svg?style=for-the-badge&logo=ffmpeg&logoColor=white)](https://ffmpeg.org)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg?style=for-the-badge)](LICENSE)
+
+<br />
+
+### 🚀 **[👉 Download Standalone Desktop App (Kronos4K.exe)](https://github.com/Bl4ke100/Kronos4k-Desktop--YT-Downloader/releases/latest) 👈**
+*(Portable Windows .exe • No installation or setup needed)*
+
+<br />
 
 [Features](#-features) • [Quick Start](#-quick-start) • [Desktop App](#-standalone-desktop-app) • [Web App](#-web-app) • [API](#-api-reference) • [Author](#-author)
 
@@ -42,7 +50,7 @@
 
 > No Python or FFmpeg installation needed. Just download and run.
 
-1. Download **`Kronos4K.exe`** from [Releases](https://github.com/Bl4ke100/YT-Downloader/releases)
+1. Download **`Kronos4K.exe`** from **[GitHub Releases](https://github.com/Bl4ke100/Kronos4k-Desktop--YT-Downloader/releases/latest)**
 2. Double-click it — that's it!
 
 ---
