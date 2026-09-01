@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import re
 import math
@@ -270,7 +270,7 @@ def extract_video_info(url: str, browser_cookie: Optional[str] = None) -> Dict[s
     for target_height, label, badge, opt_id in standard_resolutions:
         matching_video_formats = [
             f for f in formats 
-            if (f.get("height") == target_height or (target_height == 1080 and f.get("height") and f.get("height") >= 1080))
+            if f.get("height") == target_height
             and f.get("vcodec") != "none"
         ]
         
